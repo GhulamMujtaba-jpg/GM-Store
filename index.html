@@ -21,9 +21,9 @@ button{cursor:pointer}
 .red{color:red}
 .green{color:lime}
 @media(max-width:600px){.dashboard{flex-direction:column}}
-table{background:white}
+table{background:white;width:100%;border-collapse:collapse}
 .dark table{background:#2c2c2c;color:white}
-th,td{text-align:center}
+th,td{text-align:center;padding:6px;border:1px solid #ccc}
 </style>
 </head>
 <body>
@@ -72,6 +72,9 @@ th,td{text-align:center}
 let products=JSON.parse(localStorage.getItem("products"))||[];
 let sales=JSON.parse(localStorage.getItem("sales"))||[];
 
+/* ===== VIEW TRACKER ADDED ===== */
+let currentView="card";
+
 function save(){
 localStorage.setItem("products",JSON.stringify(products));
 localStorage.setItem("sales",JSON.stringify(sales));
@@ -86,10 +89,12 @@ if(!name||!costp||!salep)return alert("Fill all fields");
 
 products.push({name,costp,salep,stock:stockp,sold:0});
 save();
-renderProducts();
+refreshView();
 }
 
+/* ===== CARD VIEW ===== */
 function renderProducts(){
+currentView="card";
 let list=document.getElementById("productList");
 list.innerHTML="";
 products.forEach((p,index)=>{
@@ -108,59 +113,14 @@ list.appendChild(div);
 updateDashboard();
 }
 
-function increase(i){
-let p=products[i];
-if(p.stock>0 && p.sold>=p.stock){alert("Out of stock!");return;}
-p.sold+=1;
-let today=new Date().toISOString().split("T")[0];
-sales.push({date:today,sale:p.salep,profit:(p.salep-p.costp)});
-save();
-renderProducts();
-}
-
-function decrease(i){
-let p=products[i];
-if(p.sold>0){
-p.sold-=1;
-sales.pop();
-save();
-renderProducts();
-}
-}
-
-function updateDashboard(){
-let today=new Date().toISOString().split("T")[0];
-let todaySale=0,overallSale=0,overallProfit=0;
-sales.forEach(s=>{
-overallSale+=s.sale;
-overallProfit+=s.profit;
-if(s.date==today){todaySale+=s.sale;}
-});
-todaySale.innerText=todaySale;
-overallSale.innerText=overallSale;
-let profitEl=document.getElementById("overallProfit");
-profitEl.innerText=overallProfit;
-profitEl.className=overallProfit>=0?"green":"red";
-}
-
-function clearAll(){
-if(confirm("Clear all data?")){
-products=[];sales=[];
-save();renderProducts();
-}
-}
-
-function toggleMode(){document.body.classList.toggle("dark");}
-
 /* ===== TABLE VIEW ===== */
 function showTableView(){
+currentView="table";
 let list=document.getElementById("productList");
 list.innerHTML="";
 if(products.length===0){list.innerHTML="<div class='card'>No Products</div>";return;}
 
 let table=document.createElement("table");
-table.style.width="100%";
-table.style.borderCollapse="collapse";
 
 let header=`
 <tr style="background:#2c3e50;color:white;">
@@ -184,35 +144,91 @@ rows+=`
 });
 table.innerHTML=header+rows;
 list.appendChild(table);
+updateDashboard();
 }
 
-/* ===== SEARCH ===== */
+/* ===== NEW FUNCTION ADDED ===== */
+function refreshView(){
+if(currentView==="table"){
+showTableView();
+}else{
+renderProducts();
+}
+}
+
+/* ===== SALE CONTROL ===== */
+function increase(i){
+let p=products[i];
+if(p.stock>0 && p.sold>=p.stock){alert("Out of stock!");return;}
+p.sold+=1;
+let today=new Date().toISOString().split("T")[0];
+sales.push({date:today,sale:p.salep,profit:(p.salep-p.costp)});
+save();
+refreshView();
+}
+
+function decrease(i){
+let p=products[i];
+if(p.sold>0){
+p.sold-=1;
+sales.pop();
+save();
+refreshView();
+}
+}
+
+/* ===== DASHBOARD ===== */
+function updateDashboard(){
+let today=new Date().toISOString().split("T")[0];
+let todaySale=0,overallSale=0,overallProfit=0;
+sales.forEach(s=>{
+overallSale+=s.sale;
+overallProfit+=s.profit;
+if(s.date==today){todaySale+=s.sale;}
+});
+document.getElementById("todaySale").innerText=todaySale;
+document.getElementById("overallSale").innerText=overallSale;
+let profitEl=document.getElementById("overallProfit");
+profitEl.innerText=overallProfit;
+profitEl.className=overallProfit>=0?"green":"red";
+}
+
+/* ===== OTHER FUNCTIONS SAME ===== */
+function clearAll(){
+if(confirm("Clear all data?")){
+products=[];sales=[];
+save();refreshView();
+}
+}
+
+function toggleMode(){document.body.classList.toggle("dark");}
+
 function searchProduct(){
 let value=document.getElementById("searchBox").value.toLowerCase();
 let filtered=products.filter(p=>p.name.toLowerCase().includes(value));
 let list=document.getElementById("productList");
 list.innerHTML="";
-filtered.forEach(p=>{
+filtered.forEach((p,index)=>{
 let div=document.createElement("div");
 div.className="card";
-div.innerHTML=`<b>${p.name}</b><br>
+div.innerHTML=`
+<b>${p.name}</b><br>
 Cost: ${p.costp} | Sale: ${p.salep}<br>
 Sold: ${p.sold} | Stock: ${p.stock}`;
 list.appendChild(div);
 });
 }
 
-/* ===== SORT ===== */
 function sortByName(){
 products.sort((a,b)=>a.name.localeCompare(b.name));
-save();renderProducts();
-}
-function sortBySale(){
-products.sort((a,b)=>a.salep-b.salep);
-save();renderProducts();
+save();refreshView();
 }
 
-/* ===== EXPORT CSV ===== */
+function sortBySale(){
+products.sort((a,b)=>a.salep-b.salep);
+save();refreshView();
+}
+
 function exportCSV(){
 if(products.length===0){alert("No Data");return;}
 let csv="Name,Cost,Sale,Sold,Stock\n";
@@ -226,7 +242,6 @@ link.download="GM_Auto_Sales_Data.csv";
 link.click();
 }
 
-/* ===== SCREENSHOT ===== */
 function takeScreenshot(){
 html2canvas(document.getElementById("productList"),{scale:3}).then(canvas=>{
 let link=document.createElement("a");
@@ -236,7 +251,6 @@ link.click();
 });
 }
 
-/* ===== PRINT ===== */
 function printPage(){window.print();}
 
 renderProducts();
