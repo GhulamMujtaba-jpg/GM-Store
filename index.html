@@ -70,6 +70,9 @@ text-align:center;
 <h2>GM Auto Sales System</h2>
 <button onclick="toggleMode()">Dark/Light</button>
 <button onclick="clearAll()">Clear All</button>
+<!-- Extra Buttons -->
+<button onclick="takeScreenshot()">Take Screenshot</button>
+<button onclick="printPage()">Print</button>
 </header>
 
 <div class="container">
@@ -92,6 +95,9 @@ text-align:center;
 </div>
 
 </div>
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
 let products = JSON.parse(localStorage.getItem("products")) || [];
@@ -216,6 +222,26 @@ document.body.classList.toggle("dark");
 }
 
 renderProducts();
+
+/* --------- EXTRA FUNCTIONS --------- */
+
+// Screenshot of product list
+function takeScreenshot(){
+    let element = document.getElementById("productList");
+    if(!element) return alert("No products to screenshot!");
+    html2canvas(element, {scale:3}).then(canvas=>{
+        let link=document.createElement("a");
+        link.download = "GM_Product_List.png";
+        link.href = canvas.toDataURL();
+        link.click();
+    });
+}
+
+// Print the whole page
+function printPage(){
+    window.print();
+}
+
 </script>
 
 </body>
