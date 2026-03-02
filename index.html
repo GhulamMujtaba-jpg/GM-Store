@@ -6,62 +6,24 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{
-font-family:Arial;
-margin:0;
-background:#f4f6f9;
-transition:.3s;
-}
+body{font-family:Arial;margin:0;background:#f4f6f9;transition:.3s;}
 .dark{background:#1e1e1e;color:white}
-header{
-background:#2c3e50;
-color:white;
-padding:15px;
-text-align:center;
-}
+header{background:#2c3e50;color:white;padding:15px;text-align:center;}
 .container{padding:15px}
-input,button{
-padding:6px;
-margin:4px;
-}
+input,button{padding:6px;margin:4px;}
 button{cursor:pointer}
-.card{
-background:white;
-padding:12px;
-margin:10px 0;
-border-radius:10px;
-box-shadow:0 2px 6px rgba(0,0,0,.2);
-}
+.card{background:white;padding:12px;margin:10px 0;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.2);}
 .dark .card{background:#2c2c2c}
-.product-buttons{
-display:flex;
-gap:10px;
-align-items:center;
-}
-.product-buttons button{
-width:35px;
-height:35px;
-font-size:18px;
-}
-.dashboard{
-display:flex;
-flex-wrap:wrap;
-gap:10px;
-margin-top:15px;
-}
-.dashboard div{
-flex:1;
-background:#3498db;
-color:white;
-padding:10px;
-border-radius:10px;
-text-align:center;
-}
+.product-buttons{display:flex;gap:10px;align-items:center;}
+.product-buttons button{width:35px;height:35px;font-size:18px;}
+.dashboard{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px;}
+.dashboard div{flex:1;background:#3498db;color:white;padding:10px;border-radius:10px;text-align:center;}
 .red{color:red}
 .green{color:lime}
-@media(max-width:600px){
-.dashboard{flex-direction:column}
-}
+@media(max-width:600px){.dashboard{flex-direction:column}}
+table{background:white}
+.dark table{background:#2c2c2c;color:white}
+th,td{text-align:center}
 </style>
 </head>
 <body>
@@ -70,8 +32,7 @@ text-align:center;
 <h2>GM Auto Sales System</h2>
 <button onclick="toggleMode()">Dark/Light</button>
 <button onclick="clearAll()">Clear All</button>
-<!-- Extra Buttons -->
-<button onclick="takeScreenshot()">Take Screenshot</button>
+<button onclick="takeScreenshot()">Screenshot</button>
 <button onclick="printPage()">Print</button>
 </header>
 
@@ -85,6 +46,15 @@ text-align:center;
 <button onclick="addProduct()">Add</button>
 
 <h3>Products</h3>
+
+<button onclick="renderProducts()">Card View</button>
+<button onclick="showTableView()">Table View</button>
+<button onclick="exportCSV()">Export Excel</button>
+<br>
+<input id="searchBox" placeholder="Search Product..." onkeyup="searchProduct()">
+<button onclick="sortByName()">Sort By Name</button>
+<button onclick="sortBySale()">Sort By Sale</button>
+
 <div id="productList"></div>
 
 <h3>Dashboard</h3>
@@ -96,12 +66,11 @@ text-align:center;
 
 </div>
 
-<!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
-let products = JSON.parse(localStorage.getItem("products")) || [];
-let sales = JSON.parse(localStorage.getItem("sales")) || [];
+let products=JSON.parse(localStorage.getItem("products"))||[];
+let sales=JSON.parse(localStorage.getItem("sales"))||[];
 
 function save(){
 localStorage.setItem("products",JSON.stringify(products));
@@ -113,17 +82,9 @@ let name=pname.value;
 let costp=parseFloat(cost.value);
 let salep=parseFloat(sale.value);
 let stockp=parseInt(stock.value)||0;
-
 if(!name||!costp||!salep)return alert("Fill all fields");
 
-products.push({
-name,
-costp,
-salep,
-stock:stockp,
-sold:0
-});
-
+products.push({name,costp,salep,stock:stockp,sold:0});
 save();
 renderProducts();
 }
@@ -131,11 +92,9 @@ renderProducts();
 function renderProducts(){
 let list=document.getElementById("productList");
 list.innerHTML="";
-
 products.forEach((p,index)=>{
 let div=document.createElement("div");
 div.className="card";
-
 div.innerHTML=`
 <b>${p.name}</b><br>
 Cost: ${p.costp} | Sale: ${p.salep}<br>
@@ -143,35 +102,18 @@ Sold: ${p.sold} | Stock: ${p.stock}<br>
 <div class="product-buttons">
 <button onclick="increase(${index})">+</button>
 <button onclick="decrease(${index})">-</button>
-</div>
-`;
-
+</div>`;
 list.appendChild(div);
 });
-
 updateDashboard();
 }
 
 function increase(i){
 let p=products[i];
-
-if(p.stock>0){
-if(p.sold>=p.stock){
-alert("Out of stock!");
-return;
-}
-}
-
+if(p.stock>0 && p.sold>=p.stock){alert("Out of stock!");return;}
 p.sold+=1;
-
 let today=new Date().toISOString().split("T")[0];
-
-sales.push({
-date:today,
-sale:p.salep,
-profit:(p.salep-p.costp)
-});
-
+sales.push({date:today,sale:p.salep,profit:(p.salep-p.costp)});
 save();
 renderProducts();
 }
@@ -188,21 +130,14 @@ renderProducts();
 
 function updateDashboard(){
 let today=new Date().toISOString().split("T")[0];
-let todaySale=0;
-let overallSale=0;
-let overallProfit=0;
-
+let todaySale=0,overallSale=0,overallProfit=0;
 sales.forEach(s=>{
 overallSale+=s.sale;
 overallProfit+=s.profit;
-if(s.date==today){
-todaySale+=s.sale;
-}
+if(s.date==today){todaySale+=s.sale;}
 });
-
-document.getElementById("todaySale").innerText=todaySale;
-document.getElementById("overallSale").innerText=overallSale;
-
+todaySale.innerText=todaySale;
+overallSale.innerText=overallSale;
 let profitEl=document.getElementById("overallProfit");
 profitEl.innerText=overallProfit;
 profitEl.className=overallProfit>=0?"green":"red";
@@ -210,38 +145,101 @@ profitEl.className=overallProfit>=0?"green":"red";
 
 function clearAll(){
 if(confirm("Clear all data?")){
-products=[];
-sales=[];
-save();
-renderProducts();
+products=[];sales=[];
+save();renderProducts();
 }
 }
 
-function toggleMode(){
-document.body.classList.toggle("dark");
+function toggleMode(){document.body.classList.toggle("dark");}
+
+/* ===== TABLE VIEW ===== */
+function showTableView(){
+let list=document.getElementById("productList");
+list.innerHTML="";
+if(products.length===0){list.innerHTML="<div class='card'>No Products</div>";return;}
+
+let table=document.createElement("table");
+table.style.width="100%";
+table.style.borderCollapse="collapse";
+
+let header=`
+<tr style="background:#2c3e50;color:white;">
+<th>Name</th><th>Cost</th><th>Sale</th>
+<th>Sold</th><th>Stock</th><th>Action</th>
+</tr>`;
+let rows="";
+products.forEach((p,index)=>{
+rows+=`
+<tr>
+<td>${p.name}</td>
+<td>${p.costp}</td>
+<td>${p.salep}</td>
+<td>${p.sold}</td>
+<td>${p.stock}</td>
+<td>
+<button onclick="increase(${index})">+</button>
+<button onclick="decrease(${index})">-</button>
+</td>
+</tr>`;
+});
+table.innerHTML=header+rows;
+list.appendChild(table);
 }
 
-renderProducts();
+/* ===== SEARCH ===== */
+function searchProduct(){
+let value=document.getElementById("searchBox").value.toLowerCase();
+let filtered=products.filter(p=>p.name.toLowerCase().includes(value));
+let list=document.getElementById("productList");
+list.innerHTML="";
+filtered.forEach(p=>{
+let div=document.createElement("div");
+div.className="card";
+div.innerHTML=`<b>${p.name}</b><br>
+Cost: ${p.costp} | Sale: ${p.salep}<br>
+Sold: ${p.sold} | Stock: ${p.stock}`;
+list.appendChild(div);
+});
+}
 
-/* --------- EXTRA FUNCTIONS --------- */
+/* ===== SORT ===== */
+function sortByName(){
+products.sort((a,b)=>a.name.localeCompare(b.name));
+save();renderProducts();
+}
+function sortBySale(){
+products.sort((a,b)=>a.salep-b.salep);
+save();renderProducts();
+}
 
-// Screenshot of product list
+/* ===== EXPORT CSV ===== */
+function exportCSV(){
+if(products.length===0){alert("No Data");return;}
+let csv="Name,Cost,Sale,Sold,Stock\n";
+products.forEach(p=>{
+csv+=`${p.name},${p.costp},${p.salep},${p.sold},${p.stock}\n`;
+});
+let blob=new Blob([csv],{type:"text/csv"});
+let link=document.createElement("a");
+link.href=URL.createObjectURL(blob);
+link.download="GM_Auto_Sales_Data.csv";
+link.click();
+}
+
+/* ===== SCREENSHOT ===== */
 function takeScreenshot(){
-    let element = document.getElementById("productList");
-    if(!element) return alert("No products to screenshot!");
-    html2canvas(element, {scale:3}).then(canvas=>{
-        let link=document.createElement("a");
-        link.download = "GM_Product_List.png";
-        link.href = canvas.toDataURL();
-        link.click();
-    });
+html2canvas(document.getElementById("productList"),{scale:3}).then(canvas=>{
+let link=document.createElement("a");
+link.download="GM_Product_List.png";
+link.href=canvas.toDataURL();
+link.click();
+});
 }
 
-// Print the whole page
-function printPage(){
-    window.print();
-}
+/* ===== PRINT ===== */
+function printPage(){window.print();}
 
+renderProducts();
 </script>
 
 </body>
