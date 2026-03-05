@@ -6,26 +6,72 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{font-family:Arial;margin:0;background:#f4f6f9;transition:.3s;}
+body{
+font-family:Arial;
+margin:0;
+transition:.3s;
+background: linear-gradient(135deg,#36d1dc,#5b86e5,#ff9966,#ff5e62);
+background-size:400% 400%;
+animation:bgMove 15s infinite alternate;
+color:black;
+}
+
+@keyframes bgMove{
+0%{background-position:left}
+100%{background-position:right}
+}
+
 .dark{background:#1e1e1e;color:white}
-header{background:#2c3e50;color:white;padding:15px;text-align:center;}
-.container{padding:15px}
-input,button{padding:6px;margin:4px;}
-button{cursor:pointer}
-.card{background:white;padding:12px;margin:10px 0;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.2);}
-.dark .card{background:#2c2c2c}
+
+header{
+background:#2c3e50;
+color:white;
+padding:15px;
+text-align:center;
+position:sticky;
+top:0;
+z-index:100;
+}
+
+header button{
+margin:3px;
+padding:6px 10px;
+cursor:pointer;
+border:none;
+border-radius:5px;
+}
+
+.container{padding:15px;}
+
+input,button{padding:6px;margin:4px;border-radius:5px;}
+
+.card{
+background:white;
+padding:12px;
+margin:10px 0;
+border-radius:10px;
+box-shadow:0 2px 6px rgba(0,0,0,.2);
+}
+
+.dark .card{background:#2c2c2c;color:white}
+
 .product-buttons{display:flex;gap:10px;align-items:center;}
 .product-buttons button{width:35px;height:35px;font-size:18px;}
+
 .dashboard{display:flex;flex-wrap:wrap;gap:10px;margin-top:15px;}
 .dashboard div{flex:1;background:#3498db;color:white;padding:10px;border-radius:10px;text-align:center;}
-.red{color:red}
-.green{color:lime}
-@media(max-width:600px){.dashboard{flex-direction:column}}
+
 table{background:white;width:100%;border-collapse:collapse}
 .dark table{background:#2c2c2c;color:white}
+
 th,td{text-align:center;padding:6px;border:1px solid #ccc}
+
+#dailyRecords table{width:100%;border-collapse:collapse;margin-top:10px;}
+#dailyRecords th,#dailyRecords td{border:1px solid #999;padding:5px;text-align:center;}
+#dailyRecords th{background:#2c3e50;color:white;}
 </style>
 </head>
+
 <body>
 
 <header>
@@ -52,17 +98,35 @@ th,td{text-align:center;padding:6px;border:1px solid #ccc}
 <button onclick="exportCSV()">Export Excel</button>
 <br>
 <input id="searchBox" placeholder="Search Product..." onkeyup="searchProduct()">
-<button onclick="sortByName()">Sort By Name</button>
-<button onclick="sortBySale()">Sort By Sale</button>
 
 <div id="productList"></div>
 
 <h3>Dashboard</h3>
+
 <div class="dashboard">
-<div>Today Sale<br><span id="todaySale">0</span></div>
-<div>Overall Sale<br><span id="overallSale">0</span></div>
-<div>Overall Profit<br><span id="overallProfit">0</span></div>
-<div>Current Day<br><span id="currentDay"></span></div>
+
+<div>
+Today Sale<br>
+<span id="todaySale">0</span>
+</div>
+
+<div>
+Overall Sale<br>
+<span id="overallSale">0</span>
+</div>
+
+<div>
+Overall Profit<br>
+<span id="overallProfit">0</span>
+</div>
+
+<div>
+Current Day<br>
+<span id="currentDay">1</span>
+<br>
+<button onclick="clearCurrentDay()">Dashboard Clear</button>
+</div>
+
 </div>
 
 <h3>Daily Sales Records</h3>
@@ -73,258 +137,374 @@ th,td{text-align:center;padding:6px;border:1px solid #ccc}
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
 <script>
+
 let products = JSON.parse(localStorage.getItem("products")) || [];
 let sales = JSON.parse(localStorage.getItem("sales")) || [];
-let currentView = "card";
-
-// Track current day
 let currentDay = parseInt(localStorage.getItem("currentDay")) || 1;
+let currentView="card";
+
 document.getElementById("currentDay").innerText = currentDay;
 
-// ===== SAVE FUNCTION =====
 function save(){
-    localStorage.setItem("products", JSON.stringify(products));
-    localStorage.setItem("sales", JSON.stringify(sales));
-    localStorage.setItem("currentDay", currentDay);
+localStorage.setItem("products",JSON.stringify(products));
+localStorage.setItem("sales",JSON.stringify(sales));
+localStorage.setItem("currentDay",currentDay);
 }
 
-// ===== ADD PRODUCT =====
 function addProduct(){
-    let name = pname.value;
-    let costp = parseFloat(cost.value);
-    let salep = parseFloat(sale.value);
-    let stockp = parseInt(stock.value) || 0;
-    if(!name || !costp || !salep) return alert("Fill all fields");
 
-    products.push({name, costp, salep, stock: stockp, sold: 0});
-    save();
-    refreshView();
+let name=pname.value;
+let costp=parseFloat(cost.value);
+let salep=parseFloat(sale.value);
+let stockp=parseInt(stock.value)||0;
+
+if(!name||!costp||!salep)return alert("Fill all fields");
+
+products.push({name,costp,salep,stock:stockp,sold:0});
+
+save();
+refreshView();
+
 }
 
-// ===== REFRESH VIEW =====
 function refreshView(){
-    if(currentView === "table") showTableView();
-    else renderProducts();
-    renderDailyRecords();
-    document.getElementById("currentDay").innerText = currentDay;
+if(currentView==="table") showTableView();
+else renderProducts();
+
+renderDailyRecords();
+document.getElementById("currentDay").innerText=currentDay;
 }
 
-// ===== CARD VIEW =====
 function renderProducts(){
-    currentView = "card";
-    let list = document.getElementById("productList");
-    list.innerHTML = "";
-    products.forEach((p,index)=>{
-        let div = document.createElement("div");
-        div.className="card";
-        div.innerHTML=`
-            <b>${p.name}</b><br>
-            Cost: ${p.costp} | Sale: ${p.salep}<br>
-            Sold: ${p.sold} | Stock: ${p.stock}<br>
-            <div class="product-buttons">
-                <button onclick="increase(${index})">+</button>
-                <button onclick="decrease(${index})">-</button>
-            </div>`;
-        list.appendChild(div);
-    });
-    updateDashboard();
+
+currentView="card";
+
+let list=document.getElementById("productList");
+list.innerHTML="";
+
+products.forEach((p,index)=>{
+
+let div=document.createElement("div");
+div.className="card";
+
+div.innerHTML=`
+<b>${p.name}</b><br>
+Cost: ${p.costp} | Sale: ${p.salep}<br>
+Sold: ${p.sold} | Stock: ${p.stock}<br>
+
+<div class="product-buttons">
+<button onclick="increase(${index})">+</button>
+<button onclick="decrease(${index})">-</button>
+</div>
+`;
+
+list.appendChild(div);
+
+});
+
+updateDashboard();
+
 }
 
-// ===== TABLE VIEW =====
 function showTableView(){
-    currentView="table";
-    let list=document.getElementById("productList");
-    list.innerHTML="";
-    if(products.length===0){list.innerHTML="<div class='card'>No Products</div>";return;}
 
-    let table=document.createElement("table");
-    let header=`<tr style="background:#2c3e50;color:white;">
-    <th>Name</th><th>Cost</th><th>Sale</th>
-    <th>Sold</th><th>Stock</th><th>Action</th>
-    </tr>`;
-    let rows="";
-    products.forEach((p,index)=>{
-        rows+=`
-        <tr>
-        <td>${p.name}</td>
-        <td>${p.costp}</td>
-        <td>${p.salep}</td>
-        <td>${p.sold}</td>
-        <td>${p.stock}</td>
-        <td>
-        <button onclick="increase(${index})">+</button>
-        <button onclick="decrease(${index})">-</button>
-        </td>
-        </tr>`;
-    });
-    table.innerHTML=header+rows;
-    list.appendChild(table);
-    updateDashboard();
+currentView="table";
+
+let list=document.getElementById("productList");
+list.innerHTML="";
+
+if(products.length===0){
+list.innerHTML="<div class='card'>No Products</div>";
+return;
 }
 
-// ===== SALES CONTROL =====
+let table=document.createElement("table");
+
+let header=`<tr style="background:#2c3e50;color:white;">
+<th>Name</th>
+<th>Cost</th>
+<th>Sale</th>
+<th>Sold</th>
+<th>Stock</th>
+<th>Action</th>
+</tr>`;
+
+let rows="";
+
+products.forEach((p,index)=>{
+
+rows+=`
+<tr>
+<td>${p.name}</td>
+<td>${p.costp}</td>
+<td>${p.salep}</td>
+<td>${p.sold}</td>
+<td>${p.stock}</td>
+<td>
+<button onclick="increase(${index})">+</button>
+<button onclick="decrease(${index})">-</button>
+</td>
+</tr>
+`;
+
+});
+
+table.innerHTML=header+rows;
+list.appendChild(table);
+
+updateDashboard();
+
+}
+
 function increase(i){
-    let p=products[i];
-    if(p.stock>0 && p.sold>=p.stock){alert("Out of stock!");return;}
-    p.sold+=1;
-    let today=new Date().toISOString().split("T")[0];
-    sales.push({date:today,sale:p.salep,profit:(p.salep-p.costp),day:currentDay});
-    save();
-    refreshView();
+
+let p=products[i];
+
+if(p.stock>0 && p.sold>=p.stock){
+alert("Out of stock!");
+return;
+}
+
+p.sold++;
+
+let today=new Date().toISOString().split("T")[0];
+
+sales.push({
+date:today,
+sale:p.salep,
+profit:(p.salep-p.costp),
+day:currentDay
+});
+
+save();
+refreshView();
+
 }
 
 function decrease(i){
-    let p=products[i];
-    if(p.sold>0){
-        p.sold-=1;
-        for(let j=sales.length-1;j>=0;j--){
-            if(sales[j].sale===p.salep && sales[j].day===currentDay){
-                sales.splice(j,1); break;
-            }
-        }
-        save();
-        refreshView();
-    }
+
+let p=products[i];
+
+if(p.sold>0){
+
+p.sold--;
+
+for(let j=sales.length-1;j>=0;j--){
+
+if(sales[j].sale===p.salep && sales[j].day===currentDay){
+sales.splice(j,1);
+break;
 }
 
-// ===== DASHBOARD =====
+}
+
+save();
+refreshView();
+
+}
+
+}
+
 function updateDashboard(){
-    let today = new Date().toISOString().split("T")[0];
-    let todaySale=0, overallSale=0, overallProfit=0;
-    sales.forEach(s=>{
-        overallSale += s.sale;
-        overallProfit += s.profit;
-        if(s.day===currentDay) todaySale += s.sale;
-    });
-    document.getElementById("todaySale").innerText=todaySale;
-    document.getElementById("overallSale").innerText=overallSale;
-    let profitEl=document.getElementById("overallProfit");
-    profitEl.innerText=overallProfit;
-    profitEl.className=overallProfit>=0?"green":"red";
+
+let todaySaleValue=0;
+let overallSale=0;
+let overallProfit=0;
+
+sales.forEach(s=>{
+
+overallSale+=s.sale;
+overallProfit+=s.profit;
+
+if(s.day===currentDay){
+todaySaleValue+=s.sale;
 }
 
-// ===== CLEAR SALES ONLY =====
+});
+
+document.getElementById("todaySale").innerText=todaySaleValue;
+document.getElementById("overallSale").innerText=overallSale;
+document.getElementById("overallProfit").innerText=overallProfit;
+
+}
+
+/* ONLY CHANGE: Dashboard Clear */
+function clearCurrentDay(){
+
+if(confirm("Clear dashboard values only?")){
+
+document.getElementById("todaySale").innerText=0;
+document.getElementById("overallSale").innerText=0;
+document.getElementById("overallProfit").innerText=0;
+
+products.forEach(p=>p.sold=0);
+
+}
+
+}
+
 function clearSales(){
-    if(confirm("Clear all sales? Products will remain.")){
-        sales = sales.filter(s=>s.day!==currentDay);
-        products.forEach(p=>p.sold=0);
-        save();
-        refreshView();
-    }
+
+if(confirm("Clear all sales?")){
+
+sales=[];
+products.forEach(p=>p.sold=0);
+
+save();
+refreshView();
+
 }
 
-// ===== NEXT DAY FUNCTION =====
+}
+
 function nextDay(){
-    if(confirm("Start next day? Current day sales will be saved.")){
-        currentDay += 1;
-        products.forEach(p=>p.sold=0);
-        save();
-        refreshView();
-    }
+
+if(confirm("Start next day?")){
+
+currentDay++;
+
+products.forEach(p=>p.sold=0);
+
+save();
+refreshView();
+
 }
 
-// ===== DAILY CARD VIEW =====
+}
+
 function renderDailyRecords(){
-    let container = document.getElementById("dailyRecords");
-    container.innerHTML="";
-    let days = [...new Set(sales.map(s=>s.day))].sort((a,b)=>a-b);
-    if(days.length===0){container.innerHTML="<div class='card'>No sales yet</div>"; return;}
 
-    days.forEach(day=>{
-        let daySales = sales.filter(s=>s.day===day);
-        let total = daySales.reduce((a,b)=>a+b.sale,0);
+let container=document.getElementById("dailyRecords");
+container.innerHTML="";
 
-        let div = document.createElement("div");
-        div.className="card";
-        div.innerHTML = `<b>Day ${day}</b><br>Total Sale: ${total}<br>`;
+let days=[...new Set(sales.map(s=>s.day))];
 
-        let ul = document.createElement("ul");
-        let productsSold = {};
-        daySales.forEach(s=>{
-            let p = products.find(pr=>pr.salep===s.sale);
-            if(p){
-                if(!productsSold[p.name]) productsSold[p.name]=0;
-                productsSold[p.name]+=1;
-            }
-        });
-        for(let pname in productsSold){
-            let li = document.createElement("li");
-            li.innerText = `${pname} - ${productsSold[pname]} sold`;
-            ul.appendChild(li);
-        }
-        div.appendChild(ul);
-
-        let delBtn = document.createElement("button");
-        delBtn.innerText = "Delete Day";
-        delBtn.onclick = ()=>deleteDaySales(day);
-        div.appendChild(delBtn);
-
-        container.appendChild(div);
-    });
+if(days.length===0){
+container.innerHTML="<div class='card'>No sales yet</div>";
+return;
 }
 
-// ===== DELETE SALES OF A DAY =====
-function deleteDaySales(day){
-    if(confirm("Delete sales of Day " + day + "?")){
-        sales = sales.filter(s=>s.day!==day);
-        products.forEach(p=>{
-            let count = sales.filter(s=>s.sale===p.salep && s.day===day).length;
-            p.sold -= count;
-            if(p.sold<0) p.sold=0;
-        });
-        save();
-        refreshView();
-    }
+let table=document.createElement("table");
+
+table.innerHTML="<tr><th>Day</th><th>Total Sale</th><th>Total Profit</th><th>Delete</th></tr>";
+
+days.forEach(day=>{
+
+let daySales=sales.filter(s=>s.day===day);
+
+let totalSale=0;
+let totalProfit=0;
+
+daySales.forEach(s=>{
+totalSale+=s.sale;
+totalProfit+=s.profit;
+});
+
+let row=document.createElement("tr");
+
+row.innerHTML=`
+<td>Day ${day}</td>
+<td>${totalSale}</td>
+<td>${totalProfit}</td>
+<td><button onclick="deleteDay(${day})">Delete</button></td>
+`;
+
+table.appendChild(row);
+
+});
+
+container.appendChild(table);
+
 }
 
-// ===== OTHER FUNCTIONS SAME =====
-function toggleMode(){document.body.classList.toggle("dark");}
+function deleteDay(day){
+
+if(confirm("Delete all data of Day "+day+" ?")){
+
+sales=sales.filter(s=>s.day!==day);
+
+save();
+refreshView();
+
+}
+
+}
+
+function toggleMode(){
+document.body.classList.toggle("dark");
+}
 
 function searchProduct(){
-    let value=document.getElementById("searchBox").value.toLowerCase();
-    let filtered=products.filter(p=>p.name.toLowerCase().includes(value));
-    let list=document.getElementById("productList");
-    list.innerHTML="";
-    filtered.forEach((p,index)=>{
-        let div=document.createElement("div");
-        div.className="card";
-        div.innerHTML=`<b>${p.name}</b><br>
-        Cost: ${p.costp} | Sale: ${p.salep}<br>
-        Sold: ${p.sold} | Stock: ${p.stock}`;
-        list.appendChild(div);
-    });
+
+let value=document.getElementById("searchBox").value.toLowerCase();
+
+let filtered=products.filter(p=>p.name.toLowerCase().includes(value));
+
+let list=document.getElementById("productList");
+list.innerHTML="";
+
+filtered.forEach(p=>{
+
+let div=document.createElement("div");
+div.className="card";
+
+div.innerHTML=`
+<b>${p.name}</b><br>
+Cost: ${p.costp} | Sale: ${p.salep}<br>
+Sold: ${p.sold} | Stock: ${p.stock}
+`;
+
+list.appendChild(div);
+
+});
+
 }
 
-function sortByName(){products.sort((a,b)=>a.name.localeCompare(b.name)); save(); refreshView();}
-function sortBySale(){products.sort((a,b)=>a.salep-b.salep); save(); refreshView();}
-
 function exportCSV(){
-    if(products.length===0){alert("No Data");return;}
-    let csv="Name,Cost,Sale,Sold,Stock,Day\n";
-    products.forEach(p=>{
-        sales.filter(s=>s.sale===p.salep).forEach(s=>{
-            csv+=`${p.name},${p.costp},${p.salep},${p.sold},${p.stock},${s.day}\n`;
-        });
-    });
-    let blob=new Blob([csv],{type:"text/csv"});
-    let link=document.createElement("a");
-    link.href=URL.createObjectURL(blob);
-    link.download="GM_Auto_Sales_Data.csv";
-    link.click();
+
+if(products.length===0){
+alert("No Data");
+return;
+}
+
+let csv="Name,Cost,Sale,Sold,Stock,Day\n";
+
+products.forEach(p=>{
+
+sales.filter(s=>s.sale===p.salep).forEach(s=>{
+csv+=`${p.name},${p.costp},${p.salep},${p.sold},${p.stock},${s.day}\n`;
+});
+
+});
+
+let blob=new Blob([csv],{type:"text/csv"});
+
+let link=document.createElement("a");
+link.href=URL.createObjectURL(blob);
+link.download="GM_Auto_Sales_Data.csv";
+link.click();
+
 }
 
 function takeScreenshot(){
-    html2canvas(document.getElementById("productList"),{scale:3}).then(canvas=>{
-        let link=document.createElement("a");
-        link.download="GM_Product_List.png";
-        link.href=canvas.toDataURL();
-        link.click();
-    });
+
+html2canvas(document.body).then(canvas=>{
+
+let link=document.createElement("a");
+link.download="GM_Sales_System.png";
+link.href=canvas.toDataURL();
+link.click();
+
+});
+
 }
 
-function printPage(){window.print();}
+function printPage(){
+window.print();
+}
 
 refreshView();
+
 </script>
 
 </body>
