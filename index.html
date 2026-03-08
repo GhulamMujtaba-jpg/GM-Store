@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GM Store Pro - Full Version</title>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<style>
+body{
+  font-family:Arial;
+  margin:0;
+  background:linear-gradient(135deg,#6dd5ed,#2193b0,#cc2b5e,#753a88);
+  background-size:400% 400%;
+  animation:bgMove 12s infinite alternate;
+}
+@keyframes bgMove{0%{background-position:left}100%{background-position:right}}
+header{
+  background:#2c3e50;
+  color:white;
+  padding:15px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.container{max-width:1200px;margin:auto;padding:20px;}
+button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer;background:#27ae60;color:white;margin:3px;}
+input,textarea{width:100%;padding:8px;margin:6px 0;border-radius:6px;border:none;}
+.products{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:15px;margin-top:20px;}
+.card{background:white;padding:10px;border-radius:10px;box-shadow:0 3px 10px rgba(0,0,0,.3);text-align:center;}
+.card img{width:100%;height:150px;object-fit:cover;border-radius:6px;}
+.price{color:#27ae60;font-weight:bold;font-size:16px;}
+.old{color:red;text-decoration:line-through;}
+.categoryBlocks{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;margin-bottom:20px;}
+.cat{background:white;padding:10px;border-radius:8px;text-align:center;cursor:pointer;position:relative;}
+.cat img{width:60px;height:60px;border-radius:50%;object-fit:cover;}
+.cat button{position:absolute;top:2px;right:2px;background:red;padding:2px 5px;font-size:10px;}
+.sliderBtns{display:flex;justify-content:space-between;}
+.searchBar{width:250px;padding:6px;border-radius:6px;border:none;}
+</style>
+</head>
+<body>
+
+<header>
+<h2>GM Store Pro</h2>
+<input class="searchBar" placeholder="Search product..." onkeyup="searchProduct(this.value)">
+</header>
+
+<!-- ===== Colorful Cover / Banner ===== -->
+<div style="
+  width:100%;
+  height:180px;
+  background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #a1c4fd 100%);
+  background-size:400% 400%;
+  animation:bgMove 12s infinite alternate;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  border-radius:10px;
+  margin:10px 0;
+  color:white;
+  font-size:28px;
+  font-weight:bold;
+  text-shadow:2px 2px 5px rgba(0,0,0,0.3);
+">
+Welcome to GM Store! 🛍️
+</div>
+
+<div class="container">
+<h2>Categories</h2>
+<div id="categoryBlocks" class="categoryBlocks"></div>
+
+<h2>Admin Login</h2>
+<input id="adminUser" placeholder="Username">
+<input id="adminPass" type="password" placeholder="Password">
+<button onclick="adminLogin()">Login</button>
+
+<div id="adminDashboard" style="display:none">
+<h2>Add / Edit Product</h2>
+
+<input id="pname" placeholder="Product Name">
+<textarea id="description" placeholder="Description"></textarea>
+<input id="price" type="number" placeholder="Price">
+<input id="discount" type="number" placeholder="Discount %">
+<input id="stock" type="number" placeholder="Stock">
+<input id="whatsapp" placeholder="WhatsApp Number">
+<select id="categorySelect"></select>
+
+<h3>Category Profile Image (Optional)</h3>
+<input type="file" id="catImage">
+
+<h3>Product Images (Max 5)</h3>
+<input type="file" id="images" multiple>
+
+<h3>JazzCash Payment Number</h3>
+<input id="jazzCashNumber" placeholder="JazzCash Number for Payment">
+
+<div style="margin-top:10px;">
+<button onclick="payAndAddProduct()">Pay & Add Product</button>
+<button onclick="updateProduct()">Update Product</button>
+</div>
+
+<h2>Create New Category</h2>
+<input id="newCategoryName" placeholder="Category Name">
+<input type="file" id="newCategoryImage">
+<button onclick="addCategory()">Add Category</button>
+
+</div>
+
+<h2>Products</h2>
+<div id="productList" class="products"></div>
+</div>
+
+<script>
+let products=JSON.parse(localStorage.getItem("products"))||[];
+let categories=JSON.parse(localStorage.getItem("categories"))||{};
+let jazzCashNumber=localStorage.getItem("jazzCashNumber")||"";
+let editIndex=null;
+
+// ========== Save ==========
+function save(){
+  localStorage.setItem("products",JSON.stringify(products));
+  localStorage.setItem("categories",JSON.stringify(categories));
+  localStorage.setItem("jazzCashNumber",jazzCashNumber);
+  renderCategorySelect();
+}
+
+// ========== Admin Login ==========
+function adminLogin(){
+  let u=document.getElementById("adminUser").value;
+  let p=document.getElementById("adminPass").value;
+  if(u=="admin" && p=="admin"){
+    adminDashboard.style.display="block";
+    Swal.fire("Welcome Admin");
+    renderCategoryBlocks();
+    renderCategorySelect();
+  }else{
+    Swal.fire("Wrong Login");
+  }
+}
+
+// ========== Category Functions ==========
+function renderCategoryBlocks(){
+  categoryBlocks.innerHTML="";
+  for(let c in categories){
+    let div=document.createElement("div");
+    div.className="cat";
+    div.innerHTML=`<img src="${categories[c]}"><br><b>${c}</b><button onclick="deleteCategory('${c}')">X</button>`;
+    div.onclick=()=>filterCategory(c);
+    categoryBlocks.appendChild(div);
+  }
+}
+function renderCategorySelect(){
+  let sel=document.getElementById("categorySelect");
+  sel.innerHTML="<option value=''>Select Category</option>";
+  for(let c in categories){sel.innerHTML+=`<option value="${c}">${c}</option>`;}
+}
+function addCategory(){
+  let name=document.getElementById("newCategoryName").value.trim();
+  let file=document.getElementById("newCategoryImage").files[0];
+  if(!name){Swal.fire("Enter Category Name"); return;}
+  if(categories[name]){Swal.fire("Category already exists"); return;}
+  if(file){
+    let reader=new FileReader();
+    reader.onload=function(e){categories[name]=e.target.result; save(); renderCategoryBlocks(); Swal.fire("Category Added");}
+    reader.readAsDataURL(file);
+  }else{
+    categories[name]="https://cdn-icons-png.flaticon.com/512/263/263142.png";
+    save(); renderCategoryBlocks(); Swal.fire("Category Added");
+  }
+  document.getElementById("newCategoryName").value="";
+  document.getElementById("newCategoryImage").value="";
+}
+function deleteCategory(name){
+  Swal.fire({
+    title:`Delete Category "${name}"?`,
+    showCancelButton:true,
+    confirmButtonText:"Delete"
+  }).then(res=>{
+    if(res.isConfirmed){
+      delete categories[name];
+      products=products.filter(p=>p.category!==name);
+      save();
+      renderProducts();
+      renderCategoryBlocks();
+      Swal.fire("Deleted");
+    }
+  });
+}
+
+// ========== Pay & Add Product ==========
+function payAndAddProduct(){
+  let jazzNum=document.getElementById("jazzCashNumber").value.trim();
+  if(!jazzNum){Swal.fire("Enter JazzCash number for payment");return;}
+  jazzCashNumber=jazzNum;
+  Swal.fire({
+    title:"Payment Confirmation",
+    html:`Please pay via JazzCash to ${jazzCashNumber} and click Confirm`,
+    showCancelButton:true,
+    confirmButtonText:"Confirm",
+    cancelButtonText:"Cancel"
+  }).then((res)=>{
+    if(res.isConfirmed){addProduct();}
+  });
+}
+
+// ========== Add Product ==========
+function addProduct(){
+  let selCat=document.getElementById("categorySelect").value;
+  if(!selCat){Swal.fire("Select a category first"); return;}
+  let files=images.files;
+  if(files.length>5){Swal.fire("Maximum 5 images allowed");return;}
+  let name=pname.value.trim();
+  let desc=description.value.trim();
+  let price=price.value;
+  let discount=discount.value||0;
+  let stock=stock.value;
+  let whatsapp=whatsapp.value;
+  if(!name||!price||!desc||!stock||!whatsapp){Swal.fire("Fill all fields"); return;}
+  let imgs=[], loaded=0;
+  for(let i=0;i<files.length;i++){
+    let reader=new FileReader();
+    reader.onload=function(e){
+      imgs.push(e.target.result);
+      loaded++;
+      if(loaded==files.length){
+        products.push({name,description:desc,price,discount,stock,whatsapp,category:selCat,images:imgs,imgIndex:0});
+        save();
+        renderProducts();
+        clearForm();
+        Swal.fire("Product Added");
+      }
+    };
+    reader.readAsDataURL(files[i]);
+  }
+}
+
+// ========== Render Products ==========
+function renderProducts(){
+  productList.innerHTML="";
+  products.forEach((p,i)=>{
+    let final=(p.price-(p.price*p.discount/100)).toFixed(0);
+    let card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <img id="img${i}" src="${p.images[p.imgIndex]}">
+      <div class="sliderBtns">
+        <button onclick="prevImg(${i})">◀</button>
+        <button onclick="nextImg(${i})">▶</button>
+      </div>
+      <h3>${p.name}</h3>
+      <div class="old">PKR ${p.price}</div>
+      <div class="price">PKR ${final}</div>
+      <div>Discount ${p.discount}%</div>
+      <div>Category: ${p.category}</div>
+      <div>Stock: ${p.stock}</div>
+      <button onclick="viewProduct(${i})">View</button>
+      <button onclick="editProduct(${i})">Edit</button>
+      <button onclick="orderProduct(${i})">Order</button>
+      <button onclick="deleteProduct(${i})" style="background:red">Delete</button>
+    `;
+    productList.appendChild(card);
+  });
+}
+
+// ========== Slider ==========
+function nextImg(i){let p=products[i]; p.imgIndex=(p.imgIndex+1)%p.images.length; document.getElementById("img"+i).src=p.images[p.imgIndex];}
+function prevImg(i){let p=products[i]; p.imgIndex--; if(p.imgIndex<0)p.imgIndex=p.images.length-1; document.getElementById("img"+i).src=p.images[p.imgIndex];}
+
+// ========== View ==========
+function viewProduct(i){
+  let p=products[i];
+  let final=(p.price-(p.price*p.discount/100)).toFixed(0);
+  Swal.fire({title:p.name,html:`<img src="${p.images[0]}" width="200"><br><br>Price: ${p.price}<br>Discount: ${p.discount}%<br>Final Price: ${final}<br>Stock: ${p.stock}<br><br>${p.description}`});
+}
+
+// ========== Edit / Update ==========
+function editProduct(i){
+  let p=products[i];
+  pname.value=p.name; description.value=p.description; price.value=p.price; discount.value=p.discount;
+  stock.value=p.stock; whatsapp.value=p.whatsapp; document.getElementById("categorySelect").value=p.category;
+  editIndex=i;
+}
+function updateProduct(){
+  if(editIndex==null)return;
+  let p=products[editIndex];
+  p.name=pname.value; p.description=description.value; p.price=price.value; p.discount=discount.value;
+  p.stock=stock.value; p.whatsapp=whatsapp.value; p.category=document.getElementById("categorySelect").value;
+  save(); renderProducts(); Swal.fire("Product Updated");
+}
+
+// ========== Delete / Order ==========
+function deleteProduct(i){products.splice(i,1); save(); renderProducts();}
+function orderProduct(i){
+  let p=products[i]; let final=(p.price-(p.price*p.discount/100)).toFixed(0);
+  window.open(`https://wa.me/${p.whatsapp}?text=I want to order ${p.name} for PKR ${final}`);
+}
+
+// ========== Filter & Search ==========
+function filterCategory(cat){productList.innerHTML=""; products.forEach((p,i)=>{if(p.category==cat){let final=(p.price-(p.price*p.discount/100)).toFixed(0); let card=document.createElement("div"); card.className="card"; card.innerHTML=`<img src="${p.images[0]}"><h3>${p.name}</h3><div class="price">PKR ${final}</div><button onclick="viewProduct(${i})">View</button><button onclick="orderProduct(${i})">Order</button>`; productList.appendChild(card);}});}
+function searchProduct(text){text=text.toLowerCase(); productList.innerHTML=""; products.forEach((p,i)=>{if(p.name.toLowerCase().includes(text)){let final=(p.price-(p.price*p.discount/100)).toFixed(0); let card=document.createElement("div"); card.className="card"; card.innerHTML=`<img src="${p.images[0]}"><h3>${p.name}</h3><div class="price">PKR ${final}</div><button onclick="viewProduct(${i})">View</button><button onclick="orderProduct(${i})">Order</button>`; productList.appendChild(card);}});}
+
+// ========== Clear Form ==========
+function clearForm(){pname.value=""; description.value=""; price.value=""; discount.value=""; stock.value=""; whatsapp.value=""; images.value=""; document.getElementById("categorySelect").value="";}
+
+// ========== Initialize ==========
+renderProducts(); renderCategoryBlocks(); renderCategorySelect();
+</script>
+
+</body>
+</html>
